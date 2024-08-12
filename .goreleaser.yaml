@@ -1,0 +1,73 @@
+project_name: Couploan
+version: 2
+builds:
+  # You can have multiple builds defined as a yaml list
+  - #
+    # ID of the build.
+    #
+  # Default: Binary name
+    id: "Couploan"
+    main: ./cmd/server/
+    binary: couploan
+    flags:
+      - -trimpath
+    env:
+      - CGO_ENABLED=0
+      - >-
+        {{- if eq .Os "darwin" }}
+          {{- if eq .Arch "amd64"}}CC=o64-clang{{- end }}
+          {{- if eq .Arch "arm64"}}CC=aarch64-apple-darwin20.2-clang{{- end }}
+        {{- end }}
+        {{- if eq .Os "windows" }}
+          {{- if eq .Arch "amd64" }}CC=x86_64-w64-mingw32-gcc{{- end }}
+        {{- end }}
+    goos:
+      - linux
+      - windows
+#      - darwin
+    goarch:
+      - amd64
+#      - arm64
+checksum:
+  name_template: 'checksums.txt'
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^docs\(:'
+      - '^test:'
+      - '^test\(:'
+      - '^ci:'
+      - '^ci\('
+      - '^test$'
+      - 'README'
+      - Merge pull request
+      - Merge branch
+archives:
+  - #
+    name_template: "Couploan-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+    wrap_in_directory: true
+    builds:
+      - Couploan
+    files:
+      - 'LICENSE*'
+      - 'README*'
+      - 'docs/*'
+      - 'static/*'
+      - 'templates/**/*.gohtml'
+      - src: 'dist/CHANGELO*.md'
+        dst: ./
+        strip_parent: true
+      - src: 'config/config.yaml.example'
+        dst: ./config
+        strip_parent: true
+    format: tar.gz
+    # Can be used to change the archive formats for specific GOOSs.
+    # Most common use case is to archive as zip on Windows.
+    format_overrides:
+      - goos: windows
+        format: zip
+release:
+  draft: false
+  prerelease: auto

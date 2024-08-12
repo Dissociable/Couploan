@@ -1,0 +1,52 @@
+http:
+  hostname: "127.0.0.1"
+  port: 8000
+  readTimeout: "5s"
+  writeTimeout: "10s"
+  idleTimeout: "2m"
+  trustedProxies:
+    - "127.0.0.1"
+  # this property can be useful if you are behind a load balancer e.g. X-Forwarded-*.
+  proxyHeader: "X-Forwarded-For"
+  tls:
+    enabled: false
+    certificate: ""
+    key: ""
+
+app:
+  name: "Couploan"
+  environment: "local"
+  # Change this on any live environments
+  encryptionKey: "34WI@6rsCeURCKu^WT8SILbuF((7ZFQ^"
+  timeout: "20s"
+  logLevel: "debug"
+
+cache:
+  hostname: "localhost"
+  port: 6379
+  username: ""
+  password: ""
+  database: 7
+  testDatabase: 8
+  expiration:
+    staticFile: "4380h"
+    page: "24h"
+
+database:
+  hostname: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "root"
+  database: "couploan"
+  testDatabase: "couploan_test"
+
+pricing:
+  pricePerRegister: 1 # Cents
+
+captchaSolver:
+  capSolver:
+    apiKey: ""
+  capMonster:
+    apiKey: ""
+
+tests:

@@ -1,0 +1,56 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+
+  golangci-lint:
+    name: runner / golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}/couploan
+          fetch-depth: 0
+          token: ${{ secrets.PAT }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22
+          cache: false
+
+      -
+        name: Go Tidy
+        run: go mod tidy
+        working-directory: ${{ github.workspace }}/couploan
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          # Require: The version of golangci-lint to use.
+          # When `install-mode` is `binary` (default) the value can be v1.2 or v1.2.3 or `latest` to use the latest version.
+          # When `install-mode` is `goinstall` the value can be v1.2.3, `latest`, or the hash of a commit.
+          version: latest
+          # Optional: golangci-lint command line arguments.
+          #
+          # Note: By default, the `.golangci.yml` file should be at the root of the repository.
+          # The location of the configuration file can be changed by using `--config=`
+          args: --config=.golangci.yml
+          # Optional: working directory, useful for monorepos
+          working-directory: ${{ github.workspace }}/couploan
+          skip-cache: true
+#      - name: golangci-lint
+#        uses: reviewdog/action-golangci-lint@v2
+#        with:
+#          # optionally use a specific version of Go rather than the latest one
+#          go_version: "1.21"
+#
+#          # Can pass --config flag to change golangci-lint behavior and target
+#          # directory.
+#          golangci_lint_flags: "--config=.golangci.yml"

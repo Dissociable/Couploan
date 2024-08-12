@@ -1,0 +1,97 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    # Service containers to run with `container-job`
+    services:
+      # Label used to access the service container
+      redis:
+        # Docker Hub image
+        image: redis
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps port 6379 on service container to the host
+          - 6379:6379
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres:16
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: couploan
+          POSTGRES_USER: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps port 5432 on service container to the host
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.PAT }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22
+
+      -
+        name: Go Tidy
+        run: go mod tidy
+
+      - name: Setup Atlas
+        uses: ariga/setup-atlas@master
+
+      - name: Test
+        env:
+          COUPLOAN_CACHE_HOSTNAME: "localhost"
+          COUPLOAN_CACHE_PORT: "6379"
+          COUPLOAN_DATABASE_HOSTNAME: "localhost"
+          COUPLOAN_DATABASE_PORT: "5432"
+          COUPLOAN_DATABASE_USER: "postgres"
+          COUPLOAN_DATABASE_PASSWORD: "postgres"
+          COUPLOAN_DATABASE_DATABASE: "couploan"
+          COUPLOAN_DATABASE_TESTDATABASE: "couploan_test"
+          COUPLOAN_DATABASE_TEST_DATABASE: "couploan_test"
+        run: |
+          cat << EOF > ./config/config.yaml
+          ${{ secrets.TEST_CONFIG }}
+          EOF
+          make atlas-validate
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          go test -p 1 -v 2>&1 ./... | go-junit-report -iocopy -set-exit-code -out report.xml
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        with:
+          paths: |
+            report.xml
+        if: always()

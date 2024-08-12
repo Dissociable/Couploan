@@ -1,0 +1,17 @@
+{{/* gotype: entgo.io/ent/entc/gen.Graph */}}
+{{ define "user_extension" }}
+
+    {{/* Add the base header for the generated file */}}
+    {{ $pkg := base $.Config.Package }}
+    {{ template "header" $ }}
+
+    {{/* Create the method only for User node */}}
+    {{ range $n := $.Nodes }}
+        {{ if eq $n.Name "User" }}
+            {{ $receiver := $n.Receiver }}
+            func ({{ $receiver }} *{{ $n.Name }}) IsAdmin() bool {
+            return u.Role == user.RoleAdmin
+            }
+        {{ end }}
+    {{ end }}
+{{ end }}

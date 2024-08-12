@@ -1,0 +1,44 @@
+name: Atlas CI
+on:
+  # Run whenever code is changed in the master branch,
+  # change this to your root branch.
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'migrations/*'
+  # Run on PRs where something changed under the `migrations/` directory.
+  pull_request:
+    paths:
+      - 'migrations/*'
+jobs:
+  lint:
+    services:
+      # Spin up a mysql:8 container to be used as the dev-database for analysis.
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: couploan
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps port 5432 on service container to the host
+          - 5432:5432
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: ariga/setup-atlas@master
+      - uses: ariga/atlas-action/migrate/lint@v1
+        with:
+          dir: 'file://ent/migrate/migrations'
+          dev-url: "postgres://postgres:root@localhost:5432/couploan?search_path=public&sslmode=disable"

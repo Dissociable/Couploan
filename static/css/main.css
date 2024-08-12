@@ -1,0 +1,123 @@
+body {
+    max-width: 60em;
+    margin: auto;
+    padding: 5px;
+    font-family: sans-serif;
+}
+
+#couploan {
+    text-align: center;
+    font-size: 2.5em;
+    font-weight: 900;
+    margin-top: 0.2em;
+    margin-bottom: 0em;
+}
+
+#menu {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 0;
+}
+
+#menu li {
+    display: inline;
+}
+
+#menu li:not(:last-of-type)::after {
+    content: ' | ';
+}
+
+.grey {
+    background-color: silver;
+}
+
+.red {
+    color: red;
+}
+
+.bold {
+    font-weight: bold;
+}
+
+.center {
+    text-align: center;
+}
+
+form input {
+     margin: 3px;
+}
+
+form span {
+    margin: 0 0 10px 0;
+}
+
+form div {
+    display: inline-grid;
+}
+
+form section {
+    margin: 10px 0 0 0;
+}
+
+form section>button#btn-submit {
+    display: block;
+    margin: auto;
+    padding: 5px 20px 5px 20px;
+}
+
+hr {
+    display: block;
+    margin: 0.5em auto;
+    border-style: inset;
+    border-width: 1px;
+}
+
+code {
+    white-space: pre-wrap;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.grid-item{
+    display: grid;
+}
+
+.grid-item>label {
+    background: dimgrey;
+    color: white;
+    padding: 5px;
+    text-align: center;
+    margin: 5px 0 3px 0;
+}
+
+.grid-item>span {
+    background: gainsboro;
+    padding: 5px;
+    text-align: center;
+}
+
+.col-1 {width: 8.33%;}
+.col-2 {width: 16.66%;}
+.col-3 {width: 25%;}
+.col-4 {width: 33.33%;}
+.col-5 {width: 41.66%;}
+.col-6 {width: 50%;}
+.col-7 {width: 58.33%;}
+.col-8 {width: 66.66%;}
+.col-9 {width: 75%;}
+.col-10 {width: 83.33%;}
+.col-11 {width: 91.66%;}
+.col-12 {width: 100%;}
+
+[class*="col-"] {
+    float: left;
+    margin: 2px;
+}
+
+.row::after {
+    content: "";
+    clear: both;
+    display: table;
+}

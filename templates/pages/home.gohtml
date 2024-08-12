@@ -1,0 +1,17 @@
+{{define "content"}}
+    {{template "top-content" .}}
+{{end}}
+
+{{define "top-content"}}
+    <section class="hero is-info welcome is-small">
+        <div class="hero-body">
+            <div class="container">
+                <h1 class="title">Hello</h1>
+                <h2 class="subtitle">{{if .IsAuth}}Welcome back!{{else}}Please login in to your account.{{end}}</h2>
+                {{- if .IsAuth}}
+                    <h4>Balance: {{.AuthUser.Balance}}</h4>
+                {{- end}}
+            </div>
+        </div>
+    </section>
+{{end}}

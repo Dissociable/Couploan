@@ -1,0 +1,17 @@
+services:
+  cache:
+    image: "redis:alpine"
+    container_name: cache_couploan
+    restart: always
+    ports:
+      - "127.0.0.1:6384:6379"
+  db:
+    image: postgres:alpine
+    container_name: db_couploan
+    restart: always
+    ports:
+      - "127.0.0.1:5437:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=couploan

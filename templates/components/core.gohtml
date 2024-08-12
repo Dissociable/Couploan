@@ -1,0 +1,30 @@
+{{- define "metatags"}}
+    <title>{{ .AppName }}{{ if .Title }} | {{ .Title }}{{ end }}</title>
+    <link rel="icon" href="{{file "favicon.png"}}">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    {{- if .Metatags.Description}}
+        <meta name="description" content="{{.Metatags.Description}}">
+    {{- end}}
+    {{- if .Metatags.Keywords}}
+        <meta name="keywords" content="{{.Metatags.Keywords | join ", "}}">
+    {{- end}}
+{{- end}}
+
+{{- define "css"}}
+    <link rel="stylesheet" href="{{file "css/main.css"}}">
+{{- end}}
+
+{{- define "menu"}}
+    <nav>
+        <ul id="menu">
+    {{-  $main := . }}
+    {{- range $_, $v := .Menu }}
+        <li>{{if eq $main.UiName $v}}{{.}}{{else}}{{if and (eq $main.IsAuth true) (ne $main.AuthUser.Key nil)}}<a href="{{urlUiName $v}}?key={{$main.AuthUser.Key}}">{{$v}}</a>{{else}}<a href="{{urlUiName $v}}">{{$v}}</a>{{end}}{{end}}</li>
+    {{- end}}
+        </ul>
+    </nav>
+{{- end}}
+
+{{- define "footer"}}{{- end}}

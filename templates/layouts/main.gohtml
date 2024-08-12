@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%;">
+<head>
+    {{- template "metatags" .}}
+    {{- template "css" .}}
+</head>
+<body class="has-background-light" style="min-height:100%;">
+<p id="couploan">{{ .AppName }}</p>
+{{- template "menu" .}}
+{{- template "messages" .}}
+{{- template "content" .}}
+{{- template "footer" .}}
+</body>
+</html>
