@@ -50,3 +50,4 @@ captchaSolver:
     apiKey: ""
 
 tests:
+  proxy: ""

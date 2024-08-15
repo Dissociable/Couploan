@@ -346,7 +346,7 @@ func (c *Container) initLogger() {
 
 func (c *Container) initProxyStore() {
 	tls_client.DefaultTimeoutSeconds = 20
-	options := proxstore.Options{}
+	options := proxstore.Options{AllowDirect: false}
 	optionsCreateHttpClient := proxstore.OptionsCreateHttpClient[tls_client.HttpClient]{
 		Creator: func(proxy *proxstore.Proxy[tls_client.HttpClient]) (hc tls_client.HttpClient, err error) {
 			opts := []tls_client.HttpClientOption{

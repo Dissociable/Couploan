@@ -10,6 +10,7 @@ import (
 )
 
 type Options struct {
+	AllowDirect bool // AllowDirect whether to allow direct connections for when there is no proxies loaded
 }
 
 type OptionsCreateHttpClient[C any] struct {
@@ -49,9 +50,12 @@ func NewWithOptions[C any](options *Options, optionCreateHttpClient *OptionsCrea
 	if options == nil {
 		options = DefaultOptions
 	}
-	direct := NewProxy[C]("", 0, ProtocolDirect)
-	if optionCreateHttpClient != nil && optionCreateHttpClient.Creator != nil {
-		direct.SetHttpClientCreator(optionCreateHttpClient.Creator)
+	var direct *Proxy[C]
+	if options.AllowDirect {
+		direct = NewProxy[C]("", 0, ProtocolDirect)
+		if optionCreateHttpClient != nil && optionCreateHttpClient.Creator != nil {
+			direct.SetHttpClientCreator(optionCreateHttpClient.Creator)
+		}
 	}
 	index := &atomic.Int32{}
 	index.Store(-1)
@@ -277,7 +281,7 @@ func (p *ProxStore[C]) Count() int {
 	return p.proxies.Len()
 }
 
-// Last returns the last proxy
+// Last returns the last proxy, nil if there are no proxies and Direct is not allowed, Direct otherwise.
 func (p *ProxStore[C]) Last() *Proxy[C] {
 	if p.proxies.Len() == 0 {
 		return p.Direct()
@@ -292,7 +296,7 @@ func (p *ProxStore[C]) Last() *Proxy[C] {
 	return last
 }
 
-// First returns the first proxy
+// First returns the first proxy, nil if there are no proxies and Direct is not allowed, Direct otherwise.
 func (p *ProxStore[C]) First() *Proxy[C] {
 	if p.proxies.Len() == 0 {
 		return p.Direct()
@@ -307,6 +311,7 @@ func (p *ProxStore[C]) First() *Proxy[C] {
 	return first
 }
 
+// Next returns the next proxy, nil if there are no proxies and Direct is not allowed, Direct otherwise.
 func (p *ProxStore[C]) Next() *Proxy[C] {
 	count := p.proxies.Len()
 	if count == 0 {
@@ -341,6 +346,7 @@ func (p *ProxStore[C]) Next() *Proxy[C] {
 	return prox
 }
 
+// ProxyAt returns the proxy at the given index, nil if there are no proxies and Direct is not allowed, Direct otherwise.
 func (p *ProxStore[C]) ProxyAt(index int) *Proxy[C] {
 	count := p.proxies.Len()
 	if count == 0 {
@@ -367,7 +373,7 @@ func (p *ProxStore[C]) ProxyAt(index int) *Proxy[C] {
 	return prox
 }
 
-// Random returns a random proxy
+// Random returns a random proxy, nil if there are no proxies and Direct is not allowed, Direct otherwise.
 func (p *ProxStore[C]) Random() *Proxy[C] {
 	count := p.proxies.Len()
 	if count == 0 {
@@ -396,7 +402,9 @@ func (p *ProxStore[C]) Random() *Proxy[C] {
 	return prox
 }
 
-// Direct returns the direct proxy that's been initialized via ProxStore initialization
+// Direct returns the direct proxy that's been initialized via ProxStore initialization.
+//
+// Returns nil if [Options.AllowDirect] is false
 func (p *ProxStore[C]) Direct() *Proxy[C] {
 	return p.directProxy
 }

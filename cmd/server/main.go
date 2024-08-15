@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"github.com/Dissociable/Couploan/config"
 	"github.com/Dissociable/Couploan/ent"
+	"github.com/Dissociable/Couploan/ent/proxy"
 	"github.com/Dissociable/Couploan/ent/user"
 	"github.com/Dissociable/Couploan/pkg/routes"
 	"github.com/Dissociable/Couploan/pkg/services"
 	"github.com/Dissociable/Couploan/pkg/tasks"
 	"github.com/Dissociable/Couploan/proxstore"
+	"github.com/Dissociable/Couploan/ve"
 	tls_client "github.com/bogdanfinn/tls-client"
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/pkg/errors"
@@ -76,6 +78,16 @@ func runMain(ctx context.Context) (err error) {
 	}
 
 	c.Logger.Info("Loaded proxies", zap.Int("count", c.ProxyStore.Count()))
+
+	if c.Config.App.Environment == config.EnvLocal || c.Config.App.Environment == config.EnvDevelop {
+		v := ve.New(c.ProxyStore, c.ProxyStore.Next())
+		ip, err := v.IP(ctx)
+		if err != nil {
+			c.Logger.Error("failed to get IP", zap.Error(err))
+			return err
+		}
+		c.Logger.Info("IP", zap.String("ip", ip))
+	}
 
 	// err = prepareForDevRun(ctx)
 	// if err != nil {
@@ -154,6 +166,43 @@ func prepareForDevRun(ctx context.Context) (err error) {
 	if err != nil {
 		err = errors.Wrap(err, "failed to create user for dev environment")
 		return
+	}
+
+	_, err = c.ORM.Proxy.Delete().Exec(ctx)
+	if err != nil {
+		err = errors.Wrap(err, "failed to delete proxies for dev environment")
+		return
+	}
+	if c.Config.Tests.Proxy != "" {
+		p, err := proxstore.ParseLineWithoutProtocol[tls_client.HttpClient](
+			c.Config.Tests.Proxy,
+			strings.Split(c.Config.Tests.Proxy, ":"),
+			proxstore.ProtocolHttp,
+		)
+		if err != nil {
+			err = errors.Wrap(err, "failed to parse proxy for dev environment")
+			return err
+		}
+		if p == nil {
+			err = errors.New("failed to parse proxy for dev environment")
+			return err
+		}
+		err = c.ORM.Proxy.Create().
+			SetType(proxy.Type(strings.ToUpper(string(p.Protocol)))).
+			SetIP(p.Host).
+			SetPort(p.Port).
+			SetRotating(true).
+			SetUsername(p.Username).
+			SetPassword(p.Password).
+			OnConflict(
+				sql.ConflictColumns(proxy.FieldIP, proxy.FieldPort, proxy.FieldUsername, proxy.FieldPassword),
+				sql.ResolveWithNewValues(),
+			).
+			Exec(ctx)
+		if err != nil {
+			err = errors.Wrap(err, "failed to create user for dev environment")
+			return err
+		}
 	}
 
 	return nil

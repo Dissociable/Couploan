@@ -145,6 +145,7 @@ type (
 	}
 
 	Tests struct {
+		Proxy string
 	}
 )
 
