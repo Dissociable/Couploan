@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -25,8 +26,17 @@ const (
 	FieldPassword = "password"
 	// FieldRotating holds the string denoting the rotating field in the database.
 	FieldRotating = "rotating"
+	// EdgeProxyProvider holds the string denoting the proxyprovider edge name in mutations.
+	EdgeProxyProvider = "proxyProvider"
 	// Table holds the table name of the proxy in the database.
 	Table = "proxies"
+	// ProxyProviderTable is the table that holds the proxyProvider relation/edge.
+	ProxyProviderTable = "proxies"
+	// ProxyProviderInverseTable is the table name for the ProxyProvider entity.
+	// It exists in this package in order to avoid circular dependency with the "proxyprovider" package.
+	ProxyProviderInverseTable = "proxy_providers"
+	// ProxyProviderColumn is the table column denoting the proxyProvider relation/edge.
+	ProxyProviderColumn = "proxy_proxy_provider"
 )
 
 // Columns holds all SQL columns for proxy fields.
@@ -40,10 +50,21 @@ var Columns = []string{
 	FieldRotating,
 }
 
+// ForeignKeys holds the SQL foreign-keys that are owned by the "proxies"
+// table and are not defined as standalone fields in the schema.
+var ForeignKeys = []string{
+	"proxy_proxy_provider",
+}
+
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
+			return true
+		}
+	}
+	for i := range ForeignKeys {
+		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -117,4 +138,18 @@ func ByPassword(opts ...sql.OrderTermOption) OrderOption {
 // ByRotating orders the results by the rotating field.
 func ByRotating(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRotating, opts...).ToFunc()
+}
+
+// ByProxyProviderField orders the results by proxyProvider field.
+func ByProxyProviderField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProxyProviderStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newProxyProviderStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProxyProviderInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, false, ProxyProviderTable, ProxyProviderColumn),
+	)
 }

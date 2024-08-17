@@ -1,6 +1,7 @@
 package proxstore
 
 import (
+	"github.com/Dissociable/Couploan/proxstore/providers/geonode"
 	"github.com/phuslu/shardmap"
 	"github.com/pkg/errors"
 	"math/rand/v2"
@@ -11,6 +12,7 @@ import (
 
 type Options struct {
 	AllowDirect bool // AllowDirect whether to allow direct connections for when there is no proxies loaded
+	Provider    *Provider
 }
 
 type OptionsCreateHttpClient[C any] struct {
@@ -440,4 +442,44 @@ func (p *ProxStore[C]) GetProxyIndex(proxy *Proxy[C]) int {
 		},
 	)
 	return index
+}
+
+// ReleaseProxy releases the proxy, if proxy is nil, releases all
+func (p *ProxStore[C]) ReleaseProxy(proxy *Proxy[C]) (bool, error) {
+	if proxy != nil {
+		proxy.reloadIp.Store(true)
+	}
+	if (proxy == nil || !proxy.HasProvider()) && (p.options == nil || p.options.Provider == nil) {
+		return false, nil
+	}
+	var provider *Provider
+	if proxy != nil && proxy.HasProvider() {
+		provider = proxy.provider
+	} else {
+		provider = p.options.Provider
+	}
+	var data []geonode.ReleasePayloadData
+	if proxy != nil {
+		d := geonode.ReleasePayloadData{Port: int(proxy.Port)}
+		// extract sessionId from username, sessionId is between session- and the next -
+		if strings.Contains(proxy.Username, "session-") {
+			sessionId := strings.Split(proxy.Username, "session-")[1]
+			sessionId = strings.Split(sessionId, "-")[0]
+			d.SessionId = sessionId
+		}
+		data = append(data, d)
+	}
+	switch provider.Name {
+	case ProviderNameGeoNode:
+		return geonode.Release(
+			geonode.BasicParams{
+				ServiceType: geonode.Service(provider.ServiceType),
+				Username:    provider.Username,
+				Password:    provider.Password,
+			},
+			proxy == nil,
+			data...,
+		)
+	}
+	return false, nil
 }

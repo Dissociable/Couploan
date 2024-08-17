@@ -17,12 +17,21 @@ var (
 		{Name: "username", Type: field.TypeString},
 		{Name: "password", Type: field.TypeString},
 		{Name: "rotating", Type: field.TypeBool, Default: false},
+		{Name: "proxy_proxy_provider", Type: field.TypeInt, Nullable: true},
 	}
 	// ProxiesTable holds the schema information for the "proxies" table.
 	ProxiesTable = &schema.Table{
 		Name:       "proxies",
 		Columns:    ProxiesColumns,
 		PrimaryKey: []*schema.Column{ProxiesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "proxies_proxy_providers_proxyProvider",
+				Columns:    []*schema.Column{ProxiesColumns[7]},
+				RefColumns: []*schema.Column{ProxyProvidersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "proxy_ip_port",
@@ -33,6 +42,42 @@ var (
 				Name:    "proxy_ip_port_username_password",
 				Unique:  true,
 				Columns: []*schema.Column{ProxiesColumns[2], ProxiesColumns[3], ProxiesColumns[4], ProxiesColumns[5]},
+			},
+		},
+	}
+	// ProxyProvidersColumns holds the columns for the "proxy_providers" table.
+	ProxyProvidersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "username", Type: field.TypeString},
+		{Name: "password", Type: field.TypeString},
+		{Name: "service_type", Type: field.TypeString},
+	}
+	// ProxyProvidersTable holds the schema information for the "proxy_providers" table.
+	ProxyProvidersTable = &schema.Table{
+		Name:       "proxy_providers",
+		Columns:    ProxyProvidersColumns,
+		PrimaryKey: []*schema.Column{ProxyProvidersColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "proxyprovider_name",
+				Unique:  false,
+				Columns: []*schema.Column{ProxyProvidersColumns[1]},
+			},
+			{
+				Name:    "proxyprovider_name_service_type",
+				Unique:  false,
+				Columns: []*schema.Column{ProxyProvidersColumns[1], ProxyProvidersColumns[4]},
+			},
+			{
+				Name:    "proxyprovider_name_username",
+				Unique:  false,
+				Columns: []*schema.Column{ProxyProvidersColumns[1], ProxyProvidersColumns[2]},
+			},
+			{
+				Name:    "proxyprovider_name_service_type_username_password",
+				Unique:  true,
+				Columns: []*schema.Column{ProxyProvidersColumns[1], ProxyProvidersColumns[4], ProxyProvidersColumns[2], ProxyProvidersColumns[3]},
 			},
 		},
 	}
@@ -88,9 +133,11 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ProxiesTable,
+		ProxyProvidersTable,
 		UsersTable,
 	}
 )
 
 func init() {
+	ProxiesTable.ForeignKeys[0].RefTable = ProxyProvidersTable
 }

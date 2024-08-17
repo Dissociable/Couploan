@@ -9,5 +9,8 @@ import (
 // Proxy is the predicate function for proxy builders.
 type Proxy func(*sql.Selector)
 
+// ProxyProvider is the predicate function for proxyprovider builders.
+type ProxyProvider func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

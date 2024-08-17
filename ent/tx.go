@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// Proxy is the client for interacting with the Proxy builders.
 	Proxy *ProxyClient
+	// ProxyProvider is the client for interacting with the ProxyProvider builders.
+	ProxyProvider *ProxyProviderClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -148,6 +150,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Proxy = NewProxyClient(tx.config)
+	tx.ProxyProvider = NewProxyProviderClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

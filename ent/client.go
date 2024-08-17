@@ -15,7 +15,9 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/Dissociable/Couploan/ent/proxy"
+	"github.com/Dissociable/Couploan/ent/proxyprovider"
 	"github.com/Dissociable/Couploan/ent/user"
 )
 
@@ -26,6 +28,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// Proxy is the client for interacting with the Proxy builders.
 	Proxy *ProxyClient
+	// ProxyProvider is the client for interacting with the ProxyProvider builders.
+	ProxyProvider *ProxyProviderClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -40,6 +44,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Proxy = NewProxyClient(c.config)
+	c.ProxyProvider = NewProxyProviderClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -131,10 +136,11 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Proxy:  NewProxyClient(cfg),
-		User:   NewUserClient(cfg),
+		ctx:           ctx,
+		config:        cfg,
+		Proxy:         NewProxyClient(cfg),
+		ProxyProvider: NewProxyProviderClient(cfg),
+		User:          NewUserClient(cfg),
 	}, nil
 }
 
@@ -152,10 +158,11 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Proxy:  NewProxyClient(cfg),
-		User:   NewUserClient(cfg),
+		ctx:           ctx,
+		config:        cfg,
+		Proxy:         NewProxyClient(cfg),
+		ProxyProvider: NewProxyProviderClient(cfg),
+		User:          NewUserClient(cfg),
 	}, nil
 }
 
@@ -185,6 +192,7 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	c.Proxy.Use(hooks...)
+	c.ProxyProvider.Use(hooks...)
 	c.User.Use(hooks...)
 }
 
@@ -192,6 +200,7 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Proxy.Intercept(interceptors...)
+	c.ProxyProvider.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
 }
 
@@ -200,6 +209,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *ProxyMutation:
 		return c.Proxy.mutate(ctx, m)
+	case *ProxyProviderMutation:
+		return c.ProxyProvider.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
@@ -315,6 +326,22 @@ func (c *ProxyClient) GetX(ctx context.Context, id int) *Proxy {
 	return obj
 }
 
+// QueryProxyProvider queries the proxyProvider edge of a Proxy.
+func (c *ProxyClient) QueryProxyProvider(pr *Proxy) *ProxyProviderQuery {
+	query := (&ProxyProviderClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := pr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(proxy.Table, proxy.FieldID, id),
+			sqlgraph.To(proxyprovider.Table, proxyprovider.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, proxy.ProxyProviderTable, proxy.ProxyProviderColumn),
+		)
+		fromV = sqlgraph.Neighbors(pr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ProxyClient) Hooks() []Hook {
 	return c.hooks.Proxy
@@ -337,6 +364,155 @@ func (c *ProxyClient) mutate(ctx context.Context, m *ProxyMutation) (Value, erro
 		return (&ProxyDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Proxy mutation op: %q", m.Op())
+	}
+}
+
+// ProxyProviderClient is a client for the ProxyProvider schema.
+type ProxyProviderClient struct {
+	config
+}
+
+// NewProxyProviderClient returns a client for the ProxyProvider from the given config.
+func NewProxyProviderClient(c config) *ProxyProviderClient {
+	return &ProxyProviderClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `proxyprovider.Hooks(f(g(h())))`.
+func (c *ProxyProviderClient) Use(hooks ...Hook) {
+	c.hooks.ProxyProvider = append(c.hooks.ProxyProvider, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `proxyprovider.Intercept(f(g(h())))`.
+func (c *ProxyProviderClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ProxyProvider = append(c.inters.ProxyProvider, interceptors...)
+}
+
+// Create returns a builder for creating a ProxyProvider entity.
+func (c *ProxyProviderClient) Create() *ProxyProviderCreate {
+	mutation := newProxyProviderMutation(c.config, OpCreate)
+	return &ProxyProviderCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ProxyProvider entities.
+func (c *ProxyProviderClient) CreateBulk(builders ...*ProxyProviderCreate) *ProxyProviderCreateBulk {
+	return &ProxyProviderCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ProxyProviderClient) MapCreateBulk(slice any, setFunc func(*ProxyProviderCreate, int)) *ProxyProviderCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ProxyProviderCreateBulk{err: fmt.Errorf("calling to ProxyProviderClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ProxyProviderCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ProxyProviderCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ProxyProvider.
+func (c *ProxyProviderClient) Update() *ProxyProviderUpdate {
+	mutation := newProxyProviderMutation(c.config, OpUpdate)
+	return &ProxyProviderUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ProxyProviderClient) UpdateOne(pp *ProxyProvider) *ProxyProviderUpdateOne {
+	mutation := newProxyProviderMutation(c.config, OpUpdateOne, withProxyProvider(pp))
+	return &ProxyProviderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ProxyProviderClient) UpdateOneID(id int) *ProxyProviderUpdateOne {
+	mutation := newProxyProviderMutation(c.config, OpUpdateOne, withProxyProviderID(id))
+	return &ProxyProviderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ProxyProvider.
+func (c *ProxyProviderClient) Delete() *ProxyProviderDelete {
+	mutation := newProxyProviderMutation(c.config, OpDelete)
+	return &ProxyProviderDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ProxyProviderClient) DeleteOne(pp *ProxyProvider) *ProxyProviderDeleteOne {
+	return c.DeleteOneID(pp.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ProxyProviderClient) DeleteOneID(id int) *ProxyProviderDeleteOne {
+	builder := c.Delete().Where(proxyprovider.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ProxyProviderDeleteOne{builder}
+}
+
+// Query returns a query builder for ProxyProvider.
+func (c *ProxyProviderClient) Query() *ProxyProviderQuery {
+	return &ProxyProviderQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeProxyProvider},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ProxyProvider entity by its id.
+func (c *ProxyProviderClient) Get(ctx context.Context, id int) (*ProxyProvider, error) {
+	return c.Query().Where(proxyprovider.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ProxyProviderClient) GetX(ctx context.Context, id int) *ProxyProvider {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProxy queries the proxy edge of a ProxyProvider.
+func (c *ProxyProviderClient) QueryProxy(pp *ProxyProvider) *ProxyQuery {
+	query := (&ProxyClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := pp.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(proxyprovider.Table, proxyprovider.FieldID, id),
+			sqlgraph.To(proxy.Table, proxy.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, proxyprovider.ProxyTable, proxyprovider.ProxyColumn),
+		)
+		fromV = sqlgraph.Neighbors(pp.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ProxyProviderClient) Hooks() []Hook {
+	return c.hooks.ProxyProvider
+}
+
+// Interceptors returns the client interceptors.
+func (c *ProxyProviderClient) Interceptors() []Interceptor {
+	return c.inters.ProxyProvider
+}
+
+func (c *ProxyProviderClient) mutate(ctx context.Context, m *ProxyProviderMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ProxyProviderCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ProxyProviderUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ProxyProviderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ProxyProviderDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ProxyProvider mutation op: %q", m.Op())
 	}
 }
 
@@ -476,9 +652,9 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Proxy, User []ent.Hook
+		Proxy, ProxyProvider, User []ent.Hook
 	}
 	inters struct {
-		Proxy, User []ent.Interceptor
+		Proxy, ProxyProvider, User []ent.Interceptor
 	}
 )

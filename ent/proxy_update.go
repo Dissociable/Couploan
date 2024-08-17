@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/Dissociable/Couploan/ent/predicate"
 	"github.com/Dissociable/Couploan/ent/proxy"
+	"github.com/Dissociable/Couploan/ent/proxyprovider"
 )
 
 // ProxyUpdate is the builder for updating Proxy entities.
@@ -118,9 +119,34 @@ func (pu *ProxyUpdate) SetNillableRotating(b *bool) *ProxyUpdate {
 	return pu
 }
 
+// SetProxyProviderID sets the "proxyProvider" edge to the ProxyProvider entity by ID.
+func (pu *ProxyUpdate) SetProxyProviderID(id int) *ProxyUpdate {
+	pu.mutation.SetProxyProviderID(id)
+	return pu
+}
+
+// SetNillableProxyProviderID sets the "proxyProvider" edge to the ProxyProvider entity by ID if the given value is not nil.
+func (pu *ProxyUpdate) SetNillableProxyProviderID(id *int) *ProxyUpdate {
+	if id != nil {
+		pu = pu.SetProxyProviderID(*id)
+	}
+	return pu
+}
+
+// SetProxyProvider sets the "proxyProvider" edge to the ProxyProvider entity.
+func (pu *ProxyUpdate) SetProxyProvider(p *ProxyProvider) *ProxyUpdate {
+	return pu.SetProxyProviderID(p.ID)
+}
+
 // Mutation returns the ProxyMutation object of the builder.
 func (pu *ProxyUpdate) Mutation() *ProxyMutation {
 	return pu.mutation
+}
+
+// ClearProxyProvider clears the "proxyProvider" edge to the ProxyProvider entity.
+func (pu *ProxyUpdate) ClearProxyProvider() *ProxyUpdate {
+	pu.mutation.ClearProxyProvider()
+	return pu
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -192,6 +218,35 @@ func (pu *ProxyUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := pu.mutation.Rotating(); ok {
 		_spec.SetField(proxy.FieldRotating, field.TypeBool, value)
+	}
+	if pu.mutation.ProxyProviderCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   proxy.ProxyProviderTable,
+			Columns: []string{proxy.ProxyProviderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(proxyprovider.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := pu.mutation.ProxyProviderIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   proxy.ProxyProviderTable,
+			Columns: []string{proxy.ProxyProviderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(proxyprovider.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, pu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -304,9 +359,34 @@ func (puo *ProxyUpdateOne) SetNillableRotating(b *bool) *ProxyUpdateOne {
 	return puo
 }
 
+// SetProxyProviderID sets the "proxyProvider" edge to the ProxyProvider entity by ID.
+func (puo *ProxyUpdateOne) SetProxyProviderID(id int) *ProxyUpdateOne {
+	puo.mutation.SetProxyProviderID(id)
+	return puo
+}
+
+// SetNillableProxyProviderID sets the "proxyProvider" edge to the ProxyProvider entity by ID if the given value is not nil.
+func (puo *ProxyUpdateOne) SetNillableProxyProviderID(id *int) *ProxyUpdateOne {
+	if id != nil {
+		puo = puo.SetProxyProviderID(*id)
+	}
+	return puo
+}
+
+// SetProxyProvider sets the "proxyProvider" edge to the ProxyProvider entity.
+func (puo *ProxyUpdateOne) SetProxyProvider(p *ProxyProvider) *ProxyUpdateOne {
+	return puo.SetProxyProviderID(p.ID)
+}
+
 // Mutation returns the ProxyMutation object of the builder.
 func (puo *ProxyUpdateOne) Mutation() *ProxyMutation {
 	return puo.mutation
+}
+
+// ClearProxyProvider clears the "proxyProvider" edge to the ProxyProvider entity.
+func (puo *ProxyUpdateOne) ClearProxyProvider() *ProxyUpdateOne {
+	puo.mutation.ClearProxyProvider()
+	return puo
 }
 
 // Where appends a list predicates to the ProxyUpdate builder.
@@ -408,6 +488,35 @@ func (puo *ProxyUpdateOne) sqlSave(ctx context.Context) (_node *Proxy, err error
 	}
 	if value, ok := puo.mutation.Rotating(); ok {
 		_spec.SetField(proxy.FieldRotating, field.TypeBool, value)
+	}
+	if puo.mutation.ProxyProviderCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   proxy.ProxyProviderTable,
+			Columns: []string{proxy.ProxyProviderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(proxyprovider.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := puo.mutation.ProxyProviderIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   proxy.ProxyProviderTable,
+			Columns: []string{proxy.ProxyProviderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(proxyprovider.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Proxy{config: puo.config}
 	_spec.Assign = _node.assignValues

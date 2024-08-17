@@ -50,4 +50,11 @@ captchaSolver:
     apiKey: ""
 
 tests:
-  proxy: ""
+  proxy:
+    lines:
+      - ""
+    provider:
+      name: ""
+      username: ""
+      password: ""
+      service: ""

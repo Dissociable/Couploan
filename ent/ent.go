@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/Dissociable/Couploan/ent/proxy"
+	"github.com/Dissociable/Couploan/ent/proxyprovider"
 	"github.com/Dissociable/Couploan/ent/user"
 )
 
@@ -70,12 +71,13 @@ var (
 	columnCheck sql.ColumnCheck
 )
 
-// columnChecker checks if the column exists in the given table.
+// checkColumn checks if the column exists in the given table.
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			proxy.Table: proxy.ValidColumn,
-			user.Table:  user.ValidColumn,
+			proxy.Table:         proxy.ValidColumn,
+			proxyprovider.Table: proxyprovider.ValidColumn,
+			user.Table:          user.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

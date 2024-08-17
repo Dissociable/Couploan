@@ -7,6 +7,7 @@ import (
 	"github.com/Dissociable/Couploan/config"
 	"github.com/Dissociable/Couploan/ent"
 	"github.com/Dissociable/Couploan/ent/proxy"
+	"github.com/Dissociable/Couploan/ent/proxyprovider"
 	"github.com/Dissociable/Couploan/ent/user"
 	"github.com/Dissociable/Couploan/pkg/routes"
 	"github.com/Dissociable/Couploan/pkg/services"
@@ -80,7 +81,24 @@ func runMain(ctx context.Context) (err error) {
 	c.Logger.Info("Loaded proxies", zap.Int("count", c.ProxyStore.Count()))
 
 	if c.Config.App.Environment == config.EnvLocal || c.Config.App.Environment == config.EnvDevelop {
-		v := ve.New(c.ProxyStore, c.ProxyStore.Next())
+		p := c.ProxyStore.Next()
+		v := ve.New(c.ProxyStore, p)
+		// for i := 0; i < 6; i++ {
+		// 	ip, err := v.IP(ctx)
+		// 	if err != nil {
+		// 		c.Logger.Error("failed to get IP", zap.Error(err))
+		// 		return err
+		// 	}
+		// 	c.Logger.Info("IP", zap.String("ip", ip))
+		// 	released, err := c.ProxyStore.ReleaseProxy(p)
+		// 	if err != nil {
+		// 		c.Logger.Error("failed to release proxy", zap.Error(err))
+		// 		return err
+		// 	}
+		// 	if !released {
+		// 		c.Logger.Fatal("failed to released proxy", zap.String("proxy", p.String()))
+		// 	}
+		// }
 		ip, err := v.IP(ctx)
 		if err != nil {
 			c.Logger.Error("failed to get IP", zap.Error(err))
@@ -89,19 +107,8 @@ func runMain(ctx context.Context) (err error) {
 		c.Logger.Info("IP", zap.String("ip", ip))
 	}
 
-	// err = prepareForDevRun(ctx)
-	// if err != nil {
-	// 	return err
-	// }
-
 	// Start the scheduler service to queue periodic tasks
 	tasks.StartTasksRunner(c, true)
-
-	// err = QueueToPost(ctx)
-	// if err != nil {
-	// 	err = errors.Wrap(err, "failed to queue post")
-	// 	return err
-	// }
 
 	// Start the bot
 	routes.BuildRouter(c)
@@ -110,7 +117,8 @@ func runMain(ctx context.Context) (err error) {
 }
 
 func loadProxies(ctx context.Context, container *services.Container) (err error) {
-	proxies, err := c.ORM.Proxy.Query().All(ctx)
+	providers := make(map[int]*proxstore.Provider)
+	proxies, err := c.ORM.Proxy.Query().WithProxyProvider().All(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			err = nil
@@ -135,6 +143,19 @@ func loadProxies(ctx context.Context, container *services.Container) (err error)
 				p.Port,
 				proxstore.Protocol(strings.ToLower(string(p.Type))),
 			)
+		}
+		if p.Edges.ProxyProvider != nil {
+			existingProvider, ok := providers[p.Edges.ProxyProvider.ID]
+			if !ok {
+				existingProvider = &proxstore.Provider{
+					Name:        proxstore.ProviderName(p.Edges.ProxyProvider.Name),
+					ServiceType: p.Edges.ProxyProvider.ServiceType,
+					Username:    p.Edges.ProxyProvider.Username,
+					Password:    p.Edges.ProxyProvider.Password,
+				}
+				providers[p.Edges.ProxyProvider.ID] = existingProvider
+			}
+			prox = prox.SetProvider(existingProvider)
 		}
 		if p.Rotating {
 			prox.Rotating = true
@@ -173,35 +194,67 @@ func prepareForDevRun(ctx context.Context) (err error) {
 		err = errors.Wrap(err, "failed to delete proxies for dev environment")
 		return
 	}
-	if c.Config.Tests.Proxy != "" {
-		p, err := proxstore.ParseLineWithoutProtocol[tls_client.HttpClient](
-			c.Config.Tests.Proxy,
-			strings.Split(c.Config.Tests.Proxy, ":"),
-			proxstore.ProtocolHttp,
-		)
-		if err != nil {
-			err = errors.Wrap(err, "failed to parse proxy for dev environment")
-			return err
+	if len(c.Config.Tests.Proxy.Lines) > 0 {
+		provider := proxstore.Provider{
+			Name:        proxstore.ProviderName(c.Config.Tests.Proxy.Provider.Name),
+			ServiceType: c.Config.Tests.Proxy.Provider.Service,
+			Username:    c.Config.Tests.Proxy.Provider.Username,
+			Password:    c.Config.Tests.Proxy.Provider.Password,
 		}
-		if p == nil {
-			err = errors.New("failed to parse proxy for dev environment")
-			return err
+		providerId := 0
+		if provider.Name != proxstore.ProviderNameNone {
+			providerId, err = c.ORM.ProxyProvider.Create().
+				SetName(string(provider.Name)).
+				SetServiceType(provider.ServiceType).
+				SetUsername(provider.Username).
+				SetPassword(provider.Password).
+				OnConflict(
+					sql.ConflictColumns(
+						proxyprovider.FieldName,
+						proxyprovider.FieldServiceType,
+						proxyprovider.FieldUsername,
+						proxyprovider.FieldPassword,
+					),
+					sql.ResolveWithNewValues(),
+				).ID(ctx)
+			if err != nil {
+				err = errors.Wrap(err, "failed to create proxy provider for dev environment")
+				return err
+			}
 		}
-		err = c.ORM.Proxy.Create().
-			SetType(proxy.Type(strings.ToUpper(string(p.Protocol)))).
-			SetIP(p.Host).
-			SetPort(p.Port).
-			SetRotating(true).
-			SetUsername(p.Username).
-			SetPassword(p.Password).
-			OnConflict(
+		for _, line := range c.Config.Tests.Proxy.Lines {
+			p, err := proxstore.ParseLineWithoutProtocol[tls_client.HttpClient](
+				line,
+				strings.Split(line, ":"),
+				proxstore.ProtocolHttp,
+			)
+			if err != nil {
+				err = errors.Wrap(err, "failed to parse proxy for dev environment")
+				return err
+			}
+			if p == nil {
+				err = errors.New("failed to parse proxy for dev environment")
+				return err
+			}
+			q := c.ORM.Proxy.Create().
+				SetType(proxy.Type(strings.ToUpper(string(p.Protocol)))).
+				SetIP(p.Host).
+				SetPort(p.Port).
+				SetRotating(true).
+				SetUsername(p.Username).
+				SetPassword(p.Password)
+			if providerId > 0 {
+				q = q.SetProxyProviderID(providerId)
+			}
+			err = q.OnConflict(
 				sql.ConflictColumns(proxy.FieldIP, proxy.FieldPort, proxy.FieldUsername, proxy.FieldPassword),
 				sql.ResolveWithNewValues(),
 			).
-			Exec(ctx)
-		if err != nil {
-			err = errors.Wrap(err, "failed to create user for dev environment")
-			return err
+				Exec(ctx)
+			if err != nil {
+				err = errors.Wrap(err, "failed to create user for dev environment")
+				return err
+			}
 		}
 	}
 

@@ -9,6 +9,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/Dissociable/Couploan/ent/proxy"
+	"github.com/Dissociable/Couploan/ent/proxyprovider"
 )
 
 // Proxy is the model entity for the Proxy schema.
@@ -27,8 +28,32 @@ type Proxy struct {
 	// Password holds the value of the "password" field.
 	Password *string `json:"password,omitempty"`
 	// Rotating holds the value of the "rotating" field.
-	Rotating     bool `json:"rotating,omitempty"`
-	selectValues sql.SelectValues
+	Rotating bool `json:"rotating,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the ProxyQuery when eager-loading is set.
+	Edges                ProxyEdges `json:"edges"`
+	proxy_proxy_provider *int
+	selectValues         sql.SelectValues
+}
+
+// ProxyEdges holds the relations/edges for other nodes in the graph.
+type ProxyEdges struct {
+	// ProxyProvider holds the value of the proxyProvider edge.
+	ProxyProvider *ProxyProvider `json:"proxyProvider,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// ProxyProviderOrErr returns the ProxyProvider value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e ProxyEdges) ProxyProviderOrErr() (*ProxyProvider, error) {
+	if e.ProxyProvider != nil {
+		return e.ProxyProvider, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: proxyprovider.Label}
+	}
+	return nil, &NotLoadedError{edge: "proxyProvider"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -42,6 +67,8 @@ func (*Proxy) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case proxy.FieldType, proxy.FieldIP, proxy.FieldUsername, proxy.FieldPassword:
 			values[i] = new(sql.NullString)
+		case proxy.ForeignKeys[0]: // proxy_proxy_provider
+			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -101,6 +128,13 @@ func (pr *Proxy) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				pr.Rotating = value.Bool
 			}
+		case proxy.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field proxy_proxy_provider", value)
+			} else if value.Valid {
+				pr.proxy_proxy_provider = new(int)
+				*pr.proxy_proxy_provider = int(value.Int64)
+			}
 		default:
 			pr.selectValues.Set(columns[i], values[i])
 		}
@@ -112,6 +146,11 @@ func (pr *Proxy) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (pr *Proxy) Value(name string) (ent.Value, error) {
 	return pr.selectValues.Get(name)
+}
+
+// QueryProxyProvider queries the "proxyProvider" edge of the Proxy entity.
+func (pr *Proxy) QueryProxyProvider() *ProxyProviderQuery {
+	return NewProxyClient(pr.config).QueryProxyProvider(pr)
 }
 
 // Update returns a builder for updating this Proxy.

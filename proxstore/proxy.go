@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"net/url"
 	"strconv"
+	"sync/atomic"
 )
 
 type Proxy[C any] struct {
@@ -16,8 +17,10 @@ type Proxy[C any] struct {
 	Username          string
 	Password          string
 	Rotating          bool
+	provider          *Provider
 	httpClient        *shardmap.Map[string, C]
 	httpClientCreator CreateHttpClientCreator[C]
+	reloadIp          *atomic.Bool
 }
 
 // NewProxy creates a new proxy
@@ -26,6 +29,7 @@ func NewProxy[C any](host string, port uint16, protocol Protocol) *Proxy[C] {
 		Protocol: protocol,
 		Host:     host,
 		Port:     port,
+		reloadIp: &atomic.Bool{},
 	}
 }
 
@@ -39,6 +43,7 @@ func NewProxyWithCredential[C any](
 		Port:     port,
 		Username: username,
 		Password: password,
+		reloadIp: &atomic.Bool{},
 	}
 }
 
@@ -46,6 +51,17 @@ func NewProxyWithCredential[C any](
 func (p *Proxy[C]) SetHttpClientCreator(creator CreateHttpClientCreator[C]) *Proxy[C] {
 	p.httpClientCreator = creator
 	return p
+}
+
+// SetProvider sets the provider
+func (p *Proxy[C]) SetProvider(provider *Provider) *Proxy[C] {
+	p.provider = provider
+	return p
+}
+
+// HasProvider returns if the proxy is not nil and has a provider
+func (p *Proxy[C]) HasProvider() bool {
+	return p != nil && p.provider != nil
 }
 
 // String returns the string representation of the proxy, e.g., http://username:password@host:port
@@ -113,7 +129,8 @@ func (p *Proxy[C]) GetHttpClient(key ...string) C {
 		}
 		p.SetHttpClient(hc, key...)
 	}
-	if p.Rotating {
+	if p.reloadIp.Load() || p.Rotating {
+		p.reloadIp.Store(false)
 		switch v := any(hc).(type) {
 		case tls_client.HttpClient:
 			_ = v.SetProxy(p.String())

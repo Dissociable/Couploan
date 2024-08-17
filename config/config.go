@@ -145,7 +145,17 @@ type (
 	}
 
 	Tests struct {
-		Proxy string
+		Proxy TestsProxy
+	}
+
+	TestsProxy struct {
+		Lines    []string
+		Provider struct {
+			Name     string
+			Username string
+			Password string
+			Service  string
+		}
 	}
 )
 

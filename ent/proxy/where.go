@@ -4,6 +4,7 @@ package proxy
 
 import (
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/Dissociable/Couploan/ent/predicate"
 )
 
@@ -340,6 +341,29 @@ func RotatingEQ(v bool) predicate.Proxy {
 // RotatingNEQ applies the NEQ predicate on the "rotating" field.
 func RotatingNEQ(v bool) predicate.Proxy {
 	return predicate.Proxy(sql.FieldNEQ(FieldRotating, v))
+}
+
+// HasProxyProvider applies the HasEdge predicate on the "proxyProvider" edge.
+func HasProxyProvider() predicate.Proxy {
+	return predicate.Proxy(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, ProxyProviderTable, ProxyProviderColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasProxyProviderWith applies the HasEdge predicate on the "proxyProvider" edge with a given conditions (other predicates).
+func HasProxyProviderWith(preds ...predicate.ProxyProvider) predicate.Proxy {
+	return predicate.Proxy(func(s *sql.Selector) {
+		step := newProxyProviderStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

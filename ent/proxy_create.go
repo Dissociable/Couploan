@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/Dissociable/Couploan/ent/proxy"
+	"github.com/Dissociable/Couploan/ent/proxyprovider"
 )
 
 // ProxyCreate is the builder for creating a Proxy entity.
@@ -63,6 +64,25 @@ func (pc *ProxyCreate) SetNillableRotating(b *bool) *ProxyCreate {
 		pc.SetRotating(*b)
 	}
 	return pc
+}
+
+// SetProxyProviderID sets the "proxyProvider" edge to the ProxyProvider entity by ID.
+func (pc *ProxyCreate) SetProxyProviderID(id int) *ProxyCreate {
+	pc.mutation.SetProxyProviderID(id)
+	return pc
+}
+
+// SetNillableProxyProviderID sets the "proxyProvider" edge to the ProxyProvider entity by ID if the given value is not nil.
+func (pc *ProxyCreate) SetNillableProxyProviderID(id *int) *ProxyCreate {
+	if id != nil {
+		pc = pc.SetProxyProviderID(*id)
+	}
+	return pc
+}
+
+// SetProxyProvider sets the "proxyProvider" edge to the ProxyProvider entity.
+func (pc *ProxyCreate) SetProxyProvider(p *ProxyProvider) *ProxyCreate {
+	return pc.SetProxyProviderID(p.ID)
 }
 
 // Mutation returns the ProxyMutation object of the builder.
@@ -181,6 +201,23 @@ func (pc *ProxyCreate) createSpec() (*Proxy, *sqlgraph.CreateSpec) {
 	if value, ok := pc.mutation.Rotating(); ok {
 		_spec.SetField(proxy.FieldRotating, field.TypeBool, value)
 		_node.Rotating = value
+	}
+	if nodes := pc.mutation.ProxyProviderIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   proxy.ProxyProviderTable,
+			Columns: []string{proxy.ProxyProviderColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(proxyprovider.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.proxy_proxy_provider = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

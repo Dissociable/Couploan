@@ -7,20 +7,24 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/Dissociable/Couploan/ent/predicate"
 	"github.com/Dissociable/Couploan/ent/proxy"
+	"github.com/Dissociable/Couploan/ent/proxyprovider"
 )
 
 // ProxyQuery is the builder for querying Proxy entities.
 type ProxyQuery struct {
 	config
-	ctx        *QueryContext
-	order      []proxy.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Proxy
+	ctx               *QueryContext
+	order             []proxy.OrderOption
+	inters            []Interceptor
+	predicates        []predicate.Proxy
+	withProxyProvider *ProxyProviderQuery
+	withFKs           bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -57,10 +61,32 @@ func (pq *ProxyQuery) Order(o ...proxy.OrderOption) *ProxyQuery {
 	return pq
 }
 
+// QueryProxyProvider chains the current query on the "proxyProvider" edge.
+func (pq *ProxyQuery) QueryProxyProvider() *ProxyProviderQuery {
+	query := (&ProxyProviderClient{config: pq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := pq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := pq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(proxy.Table, proxy.FieldID, selector),
+			sqlgraph.To(proxyprovider.Table, proxyprovider.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, proxy.ProxyProviderTable, proxy.ProxyProviderColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(pq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // First returns the first Proxy entity from the query.
 // Returns a *NotFoundError when no Proxy was found.
 func (pq *ProxyQuery) First(ctx context.Context) (*Proxy, error) {
-	nodes, err := pq.Limit(1).All(setContextOp(ctx, pq.ctx, "First"))
+	nodes, err := pq.Limit(1).All(setContextOp(ctx, pq.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +109,7 @@ func (pq *ProxyQuery) FirstX(ctx context.Context) *Proxy {
 // Returns a *NotFoundError when no Proxy ID was found.
 func (pq *ProxyQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = pq.Limit(1).IDs(setContextOp(ctx, pq.ctx, "FirstID")); err != nil {
+	if ids, err = pq.Limit(1).IDs(setContextOp(ctx, pq.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -106,7 +132,7 @@ func (pq *ProxyQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one Proxy entity is found.
 // Returns a *NotFoundError when no Proxy entities are found.
 func (pq *ProxyQuery) Only(ctx context.Context) (*Proxy, error) {
-	nodes, err := pq.Limit(2).All(setContextOp(ctx, pq.ctx, "Only"))
+	nodes, err := pq.Limit(2).All(setContextOp(ctx, pq.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +160,7 @@ func (pq *ProxyQuery) OnlyX(ctx context.Context) *Proxy {
 // Returns a *NotFoundError when no entities are found.
 func (pq *ProxyQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = pq.Limit(2).IDs(setContextOp(ctx, pq.ctx, "OnlyID")); err != nil {
+	if ids, err = pq.Limit(2).IDs(setContextOp(ctx, pq.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -159,7 +185,7 @@ func (pq *ProxyQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of Proxies.
 func (pq *ProxyQuery) All(ctx context.Context) ([]*Proxy, error) {
-	ctx = setContextOp(ctx, pq.ctx, "All")
+	ctx = setContextOp(ctx, pq.ctx, ent.OpQueryAll)
 	if err := pq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
@@ -181,7 +207,7 @@ func (pq *ProxyQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if pq.ctx.Unique == nil && pq.path != nil {
 		pq.Unique(true)
 	}
-	ctx = setContextOp(ctx, pq.ctx, "IDs")
+	ctx = setContextOp(ctx, pq.ctx, ent.OpQueryIDs)
 	if err = pq.Select(proxy.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
@@ -199,7 +225,7 @@ func (pq *ProxyQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (pq *ProxyQuery) Count(ctx context.Context) (int, error) {
-	ctx = setContextOp(ctx, pq.ctx, "Count")
+	ctx = setContextOp(ctx, pq.ctx, ent.OpQueryCount)
 	if err := pq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
@@ -217,7 +243,7 @@ func (pq *ProxyQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (pq *ProxyQuery) Exist(ctx context.Context) (bool, error) {
-	ctx = setContextOp(ctx, pq.ctx, "Exist")
+	ctx = setContextOp(ctx, pq.ctx, ent.OpQueryExist)
 	switch _, err := pq.FirstID(ctx); {
 	case IsNotFound(err):
 		return false, nil
@@ -244,15 +270,27 @@ func (pq *ProxyQuery) Clone() *ProxyQuery {
 		return nil
 	}
 	return &ProxyQuery{
-		config:     pq.config,
-		ctx:        pq.ctx.Clone(),
-		order:      append([]proxy.OrderOption{}, pq.order...),
-		inters:     append([]Interceptor{}, pq.inters...),
-		predicates: append([]predicate.Proxy{}, pq.predicates...),
+		config:            pq.config,
+		ctx:               pq.ctx.Clone(),
+		order:             append([]proxy.OrderOption{}, pq.order...),
+		inters:            append([]Interceptor{}, pq.inters...),
+		predicates:        append([]predicate.Proxy{}, pq.predicates...),
+		withProxyProvider: pq.withProxyProvider.Clone(),
 		// clone intermediate query.
 		sql:  pq.sql.Clone(),
 		path: pq.path,
 	}
+}
+
+// WithProxyProvider tells the query-builder to eager-load the nodes that are connected to
+// the "proxyProvider" edge. The optional arguments are used to configure the query builder of the edge.
+func (pq *ProxyQuery) WithProxyProvider(opts ...func(*ProxyProviderQuery)) *ProxyQuery {
+	query := (&ProxyProviderClient{config: pq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	pq.withProxyProvider = query
+	return pq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -331,15 +369,26 @@ func (pq *ProxyQuery) prepareQuery(ctx context.Context) error {
 
 func (pq *ProxyQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proxy, error) {
 	var (
-		nodes = []*Proxy{}
-		_spec = pq.querySpec()
+		nodes       = []*Proxy{}
+		withFKs     = pq.withFKs
+		_spec       = pq.querySpec()
+		loadedTypes = [1]bool{
+			pq.withProxyProvider != nil,
+		}
 	)
+	if pq.withProxyProvider != nil {
+		withFKs = true
+	}
+	if withFKs {
+		_spec.Node.Columns = append(_spec.Node.Columns, proxy.ForeignKeys...)
+	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Proxy).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &Proxy{config: pq.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -351,7 +400,46 @@ func (pq *ProxyQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proxy,
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := pq.withProxyProvider; query != nil {
+		if err := pq.loadProxyProvider(ctx, query, nodes, nil,
+			func(n *Proxy, e *ProxyProvider) { n.Edges.ProxyProvider = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (pq *ProxyQuery) loadProxyProvider(ctx context.Context, query *ProxyProviderQuery, nodes []*Proxy, init func(*Proxy), assign func(*Proxy, *ProxyProvider)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Proxy)
+	for i := range nodes {
+		if nodes[i].proxy_proxy_provider == nil {
+			continue
+		}
+		fk := *nodes[i].proxy_proxy_provider
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(proxyprovider.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "proxy_proxy_provider" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
 }
 
 func (pq *ProxyQuery) sqlCount(ctx context.Context) (int, error) {
@@ -449,7 +537,7 @@ func (pgb *ProxyGroupBy) Aggregate(fns ...AggregateFunc) *ProxyGroupBy {
 
 // Scan applies the selector query and scans the result into the given value.
 func (pgb *ProxyGroupBy) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, pgb.build.ctx, "GroupBy")
+	ctx = setContextOp(ctx, pgb.build.ctx, ent.OpQueryGroupBy)
 	if err := pgb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
@@ -497,7 +585,7 @@ func (ps *ProxySelect) Aggregate(fns ...AggregateFunc) *ProxySelect {
 
 // Scan applies the selector query and scans the result into the given value.
 func (ps *ProxySelect) Scan(ctx context.Context, v any) error {
-	ctx = setContextOp(ctx, ps.ctx, "Select")
+	ctx = setContextOp(ctx, ps.ctx, ent.OpQuerySelect)
 	if err := ps.prepareQuery(ctx); err != nil {
 		return err
 	}
