@@ -13,7 +13,7 @@ require (
 	github.com/Dissociable/persistent-cookiejar v0.0.0-20240309151603-d1ea45f219a9
 	github.com/adrg/strutil v0.3.1
 	github.com/bogdanfinn/fhttp v0.5.28
-	github.com/bogdanfinn/tls-client v1.7.5
+	github.com/bogdanfinn/tls-client v1.7.8
 	github.com/brianvoe/gofakeit/v7 v7.0.4
 	github.com/discomco/go-status v0.0.3
 	github.com/eko/gocache/lib/v4 v4.1.6

@@ -105,6 +105,13 @@ func runMain(ctx context.Context) (err error) {
 			return err
 		}
 		c.Logger.Info("IP", zap.String("ip", ip))
+		_, err = v.Index(ctx)
+		if err != nil {
+			c.Logger.Error("failed to get index", zap.Error(err))
+			return err
+		} else {
+			c.Logger.Debug("got index successfully")
+		}
 	}
 
 	// Start the scheduler service to queue periodic tasks
@@ -226,7 +233,7 @@ func prepareForDevRun(ctx context.Context) (err error) {
 			p, err := proxstore.ParseLineWithoutProtocol[tls_client.HttpClient](
 				line,
 				strings.Split(line, ":"),
-				proxstore.ProtocolHttp,
+				proxstore.ProtocolSocks5,
 			)
 			if err != nil {
 				err = errors.Wrap(err, "failed to parse proxy for dev environment")

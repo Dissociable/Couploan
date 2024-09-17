@@ -10,41 +10,46 @@ import (
 )
 
 var UserAgent = UserAgentChrome
-var UserAgentChrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+var UserAgentChrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 var GoogleBotUserAgent = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
 
 var DefaultGetHeaders = DefaultChromeHeaders
 
 var DefaultChromeHeaders = http.Header{
-	"sec-ch-ua":                 {"\"Not/A)Brand\";v=\"8\", \"Chromium\";v=\"126\", \"Google Chrome\";v=\"126\""},
-	"sec-ch-ua-mobile":          {"?0"},
-	"sec-ch-ua-platform":        {"\"Windows\""},
-	"upgrade-insecure-requests": {"1"},
-	"user-agent":                {UserAgent},
-	"accept":                    {"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"},
-	"sec-fetch-site":            {"cross-site"},
-	"sec-fetch-mode":            {"navigate"},
-	"sec-fetch-user":            {"?1"},
-	"sec-fetch-dest":            {"document"},
-	"referer":                   {"https://www.google.com/"},
-	"accept-language":           {"en-US,en;q=0.9"},
-	"priority":                  {"u=0, i"},
-	"accept-encoding":           {"gzip, deflate, br"},
+	"Accept":                    {`text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7`},
+	"Accept-Encoding":           {`gzip, deflate, br, zstd`},
+	"Accept-Language":           {`en-US,en;q=0.9`},
+	"Cache-Control":             {`max-age=0`},
+	"Connection":                {`keep-alive`},
+	"Host":                      {`ve.cbi.ir`},
+	"Referer":                   {"https://www.google.com/"},
+	"Sec-Fetch-Dest":            {`document`},
+	"Sec-Fetch-Mode":            {`navigate`},
+	"Sec-Fetch-Site":            {`same-origin`},
+	"Sec-Fetch-User":            {`?1`},
+	"Upgrade-Insecure-Requests": {`1`},
+	"User-Agent":                {UserAgentChrome},
+	"sec-ch-ua":                 {`"Not/A)Brand";v="8", "Chromium";v="124"`},
+	"sec-ch-ua-mobile":          {`?0`},
+	"sec-ch-ua-platform":        {`Windows`},
 	http.HeaderOrderKey: {
+		"Accept",
+		"Accept-Encoding",
+		"Accept-Language",
+		"Cache-Control",
+		"Connection",
+		"Cookie",
+		"Host",
+		"Referer",
+		"Sec-Fetch-Dest",
+		"Sec-Fetch-Mode",
+		"Sec-Fetch-Site",
+		"Sec-Fetch-User",
+		"Upgrade-Insecure-Requests",
+		"User-Agent",
 		"sec-ch-ua",
 		"sec-ch-ua-mobile",
 		"sec-ch-ua-platform",
-		"upgrade-insecure-requests",
-		"user-agent",
-		"accept",
-		"sec-fetch-site",
-		"sec-fetch-mode",
-		"sec-fetch-user",
-		"sec-fetch-dest",
-		"referer",
-		"accept-language",
-		"priority",
-		"accept-encoding",
 	},
 }
 

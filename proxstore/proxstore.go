@@ -460,6 +460,9 @@ func (p *ProxStore[C]) ReleaseProxy(proxy *Proxy[C]) (bool, error) {
 	}
 	var data []geonode.ReleasePayloadData
 	if proxy != nil {
+		if !(proxy.Port >= 10000 && proxy.Port < 11000) {
+			return true, nil
+		}
 		d := geonode.ReleasePayloadData{Port: int(proxy.Port)}
 		// extract sessionId from username, sessionId is between session- and the next -
 		if strings.Contains(proxy.Username, "session-") {

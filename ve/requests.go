@@ -43,7 +43,13 @@ func init() {
 	}
 
 	// Cookie
-	getCookieJarFunc = nil
+	getCookieJarFunc = func(requester *Requester[*VE]) (*CookieJar, error) {
+		if requester.GetCookieJar() != nil {
+			return requester.GetCookieJar(), nil
+		} else {
+			return requester.GetBase().cj, nil
+		}
+	}
 }
 
 // getProxy returns the last used proxy
