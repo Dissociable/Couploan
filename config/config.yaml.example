@@ -49,6 +49,12 @@ captchaSolver:
   capMonster:
     apiKey: ""
 
+shapeSolver:
+  url: "http://localhost:80"
+  apiKey: ""
+
+ve:
+
 tests:
   proxy:
     lines:

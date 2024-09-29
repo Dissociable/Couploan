@@ -67,6 +67,7 @@ type (
 		Loki          LokiConfig
 		Pricing       Pricing
 		CaptchaSolver CaptchaSolver
+		ShapeSolver   ShapeSolver
 		Tests         Tests
 	}
 
@@ -141,6 +142,11 @@ type (
 	}
 
 	CapMonster struct {
+		ApiKey string
+	}
+
+	ShapeSolver struct {
+		URL    string
 		ApiKey string
 	}
 

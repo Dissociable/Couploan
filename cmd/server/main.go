@@ -82,7 +82,7 @@ func runMain(ctx context.Context) (err error) {
 
 	if c.Config.App.Environment == config.EnvLocal || c.Config.App.Environment == config.EnvDevelop {
 		p := c.ProxyStore.Next()
-		v := ve.New(c.ProxyStore, p)
+		v := ve.New(c.Config, c.ProxyStore, p)
 		// for i := 0; i < 6; i++ {
 		// 	ip, err := v.IP(ctx)
 		// 	if err != nil {
