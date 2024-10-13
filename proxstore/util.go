@@ -1,6 +1,7 @@
 package proxstore
 
 import (
+	"github.com/brianvoe/gofakeit/v7"
 	"reflect"
 )
 
@@ -23,4 +24,8 @@ func isNil[T any](t T) bool {
 		}
 		return true
 	}
+}
+
+func RandomString(length int) string {
+	return gofakeit.Password(true, true, true, false, false, length)
 }
