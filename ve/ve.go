@@ -7,10 +7,11 @@ import (
 )
 
 type VE struct {
-	ps     *proxstore.ProxStore[tls_client.HttpClient]
-	proxy  *proxstore.Proxy[tls_client.HttpClient]
-	cj     *CookieJar
-	config *config.Config
+	ps                *proxstore.ProxStore[tls_client.HttpClient]
+	proxy             *proxstore.Proxy[tls_client.HttpClient]
+	cj                *CookieJar
+	config            *config.Config
+	shapeSolverClient tls_client.HttpClient
 }
 
 func New(
@@ -21,10 +22,16 @@ func New(
 		proxy = proxyStore.Next()
 	}
 	cj, _ := NewCookieJar(&CookieJarOptions{Options: nil})
+	shapeSolverClient, _ := tls_client.NewHttpClient(
+		tls_client.NewNoopLogger(),
+		tls_client.WithNotFollowRedirects(),
+		tls_client.WithTimeoutSeconds(60),
+	)
 	return &VE{
-		ps:     proxyStore,
-		proxy:  proxy,
-		cj:     cj,
-		config: cfg,
+		ps:                proxyStore,
+		proxy:             proxy,
+		cj:                cj,
+		config:            cfg,
+		shapeSolverClient: shapeSolverClient,
 	}
 }

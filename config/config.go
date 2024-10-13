@@ -202,6 +202,8 @@ func GetConfig() (Config, error) {
 		return c, err
 	}
 
+	c.ShapeSolver.URL = strings.Trim(c.ShapeSolver.URL, "/")
+
 	return c, nil
 }
 
